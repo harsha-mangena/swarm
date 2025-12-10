@@ -1,0 +1,36 @@
+---
+description: SwarmOS development guidelines
+rule_type: always
+---
+
+# SwarmOS Development Rules
+
+## Project Context
+SwarmOS is a multi-agent orchestration system with hybrid debate mechanism.
+Python for backend (FastAPI), HTMX + Alpine.js for frontend.
+
+## Architecture Principles
+- Agents communicate via Redis Streams (not direct calls)
+- State is immutable; use event sourcing patterns
+- All external calls must be idempotent with retry logic
+- Debate results determined by scoring, not first response
+- Memory is provider-agnostic; context compression handles limits
+
+## Code Patterns
+- Use Pydantic for all data models
+- Agents inherit from `BaseAgent` in backend/agents/base.py
+- Use async/await for all I/O operations
+- Log all agent decisions with structured logging
+- HTMX handlers return HTML fragments, not JSON
+
+## Memory Rules
+- Task memory: `task:{task_id}` namespace
+- Agent memory: `agent:{agent_id}` namespace  
+- Global memory: `global` namespace
+- Always normalize context before sending to LLM
+
+## UI Rules
+- No build step; use HTMX for interactivity
+- Alpine.js for client-side state only
+- Progressive disclosure: summary first, expand for details
+- Dark mode is default

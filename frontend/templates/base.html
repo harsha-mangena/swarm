@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SwarmOS{% endblock %}</title>
+    
+    <!-- Styles -->
+    <link href="/static/css/output.css" rel="stylesheet">
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/ws.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/sse.js"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-bg-primary text-text-primary min-h-screen">
+    
+    <!-- Header -->
+    <header class="border-b border-border sticky top-0 bg-bg-primary/80 backdrop-blur-sm z-50">
+        <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <a href="/" class="text-lg font-semibold">SwarmOS</a>
+                <nav class="hidden md:flex items-center gap-4">
+                    <a href="/" class="text-text-secondary hover:text-text-primary text-sm">Dashboard</a>
+                    <a href="/tasks" class="text-text-secondary hover:text-text-primary text-sm">Tasks</a>
+                    <a href="/agents" class="text-text-secondary hover:text-text-primary text-sm">Agents</a>
+                </nav>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Provider Status Indicator -->
+                <div 
+                    hx-get="/api/status" 
+                    hx-trigger="load, every 30s"
+                    hx-swap="innerHTML"
+                    class="flex items-center gap-2"
+                >
+                    {% include "components/provider_badge.html" %}
+                </div>
+                
+                <!-- Theme Toggle -->
+                <button 
+                    x-data="{ dark: true }"
+                    @click="dark = !dark; document.documentElement.dataset.theme = dark ? 'dark' : 'light'"
+                    class="p-2 rounded-lg hover:bg-bg-tertiary"
+                >
+                    <svg x-show="dark" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Toast Notifications -->
+    <div 
+        id="toast-container"
+        class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+    ></div>
+    
+</body>
+</html>
+

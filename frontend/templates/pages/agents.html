@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Agents - SwarmOS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-2xl font-semibold">Agents</h1>
+    
+    <div 
+        id="agents-list"
+        hx-get="/api/agents"
+        hx-trigger="load"
+        hx-swap="innerHTML"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
+        <div class="p-6 text-center text-text-tertiary">Loading agents...</div>
+    </div>
+</div>
+{% endblock %}
+

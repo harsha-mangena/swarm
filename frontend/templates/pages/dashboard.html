@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    
+    <!-- Page Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold">Dashboard</h1>
+            <p class="text-text-secondary text-sm mt-1">Create and monitor tasks</p>
+        </div>
+    </div>
+    
+    <!-- Task Creation Form -->
+    <div class="bg-bg-secondary rounded-xl border border-border p-6">
+        <form 
+            hx-post="/api/tasks"
+            hx-target="#task-list"
+            hx-swap="afterbegin"
+            hx-on::after-request="this.reset()"
+            class="space-y-4"
+        >
+            <div>
+                <label class="block text-sm font-medium mb-2">Task Description</label>
+                <textarea 
+                    name="description"
+                    rows="3"
+                    placeholder="Describe what you want to accomplish..."
+                    class="w-full bg-bg-tertiary border border-border rounded-lg px-4 py-3 
+                           text-text-primary placeholder-text-tertiary
+                           focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
+                           resize-none"
+                    required
+                ></textarea>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- Provider Selection -->
+                <div class="flex-1" x-data="{ open: false, selected: 'auto' }">
+                    <label class="block text-sm font-medium mb-2">Provider</label>
+                    <div class="relative">
+                        <button 
+                            type="button"
+                            @click="open = !open"
+                            class="w-full bg-bg-tertiary border border-border rounded-lg px-4 py-2.5
+                                   flex items-center justify-between
+                                   hover:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/50"
+                        >
+                            <span x-text="selected === 'auto' ? 'Auto (Recommended)' : selected" class="capitalize"></span>
+                            <svg class="w-4 h-4 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        
+                        <div 
+                            x-show="open"
+                            @click.away="open = false"
+                            x-transition
+                            class="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border 
+                                   rounded-lg shadow-xl overflow-hidden z-10"
+                        >
+                            <template x-for="provider in ['auto', 'ollama', 'claude', 'gemini', 'openai']">
+                                <button 
+                                    type="button"
+                                    @click="selected = provider; open = false"
+                                    class="w-full px-4 py-2.5 text-left hover:bg-bg-tertiary text-sm capitalize"
+                                    :class="selected === provider ? 'text-accent' : 'text-text-primary'"
+                                    x-text="provider === 'auto' ? 'Auto (Recommended)' : provider"
+                                ></button>
+                            </template>
+                        </div>
+                        
+                        <input type="hidden" name="provider" :value="selected">
+                    </div>
+                </div>
+                
+                <!-- Submit -->
+                <div class="pt-7">
+                    <button 
+                        type="submit"
+                        class="bg-accent hover:bg-accent-hover text-white px-6 py-2.5 rounded-lg
+                               font-medium transition-colors flex items-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Create Task
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div 
+        hx-get="/api/stats"
+        hx-trigger="load, every 10s"
+        hx-swap="innerHTML"
+        class="grid grid-cols-1 md:grid-cols-4 gap-4"
+    >
+        {% include "components/stats_cards.html" %}
+    </div>
+    
+    <!-- Active Tasks -->
+    <div class="bg-bg-secondary rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 class="font-medium">Active Tasks</h2>
+            <a href="/tasks" class="text-accent text-sm hover:underline">View all</a>
+        </div>
+        
+        <div 
+            id="task-list"
+            hx-get="/api/tasks?status=in_progress&limit=5"
+            hx-trigger="load"
+            hx-swap="innerHTML"
+            class="divide-y divide-border"
+        >
+            <!-- Task items loaded via HTMX -->
+            <div class="p-6 text-center text-text-tertiary">
+                Loading tasks...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Agent Activity (Real-time) -->
+    <div class="bg-bg-secondary rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h2 class="font-medium">Agent Activity</h2>
+        </div>
+        
+        <div 
+            hx-ext="sse"
+            sse-connect="/api/agents/stream"
+            sse-swap="message"
+            class="p-6 space-y-3 max-h-80 overflow-y-auto"
+        >
+            <!-- Real-time agent updates -->
+            <p class="text-text-tertiary text-sm">Waiting for activity...</p>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}
+

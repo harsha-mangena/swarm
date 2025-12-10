@@ -1,0 +1,13 @@
+{
+  "name": "swarmos",
+  "version": "0.1.0",
+  "description": "SwarmOS frontend build tools",
+  "scripts": {
+    "build:css": "tailwindcss -i ./frontend/static/css/input.css -o ./frontend/static/css/output.css",
+    "watch:css": "tailwindcss -i ./frontend/static/css/input.css -o ./frontend/static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
+

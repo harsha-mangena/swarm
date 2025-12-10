@@ -1,0 +1,29 @@
+---
+description: Python backend conventions
+rule_type: always
+---
+
+# Python Backend Rules
+
+## Code Style
+- Use type hints for all function signatures
+- Prefer Pydantic models over dataclasses for API models
+- Use async/await for all I/O operations
+- Follow PEP 8 with line length 100
+
+## Error Handling
+- Always use try/except for external API calls
+- Log errors with context
+- Return meaningful error messages to API clients
+- Use circuit breakers for LLM providers
+
+## Testing
+- Unit tests in `backend/tests/unit/`
+- Integration tests in `backend/tests/integration/`
+- Use pytest with async support
+- Mock external services in tests
+
+## Dependencies
+- Use Poetry for dependency management
+- Pin major versions, allow minor updates
+- Document all external dependencies

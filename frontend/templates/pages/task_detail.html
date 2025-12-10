@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Task Detail - SwarmOS{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div>
+        <a href="/tasks" class="text-accent hover:underline text-sm">← Back to Tasks</a>
+        <h1 class="text-2xl font-semibold mt-2">Task Detail</h1>
+    </div>
+    
+    <div 
+        id="task-detail"
+        hx-get="/api/tasks/{{ task_id }}"
+        hx-trigger="load"
+        hx-swap="innerHTML"
+    >
+        <div class="p-6 text-center text-text-tertiary">Loading task...</div>
+    </div>
+</div>
+{% endblock %}
+

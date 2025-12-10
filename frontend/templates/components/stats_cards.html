@@ -1,0 +1,29 @@
+<div class="bg-bg-secondary rounded-lg border border-border p-4">
+    <div class="text-sm text-text-tertiary">Total Tasks</div>
+    <div class="text-2xl font-semibold mt-1" id="total-tasks">-</div>
+</div>
+<div class="bg-bg-secondary rounded-lg border border-border p-4">
+    <div class="text-sm text-text-tertiary">Active Tasks</div>
+    <div class="text-2xl font-semibold mt-1" id="active-tasks">-</div>
+</div>
+<div class="bg-bg-secondary rounded-lg border border-border p-4">
+    <div class="text-sm text-text-tertiary">Completed</div>
+    <div class="text-2xl font-semibold mt-1" id="completed-tasks">-</div>
+</div>
+<div class="bg-bg-secondary rounded-lg border border-border p-4">
+    <div class="text-sm text-text-tertiary">Total Tokens</div>
+    <div class="text-2xl font-semibold mt-1" id="total-tokens">-</div>
+</div>
+
+<script>
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'stats') {
+        const data = JSON.parse(evt.detail.xhr.responseText);
+        document.getElementById('total-tasks').textContent = data.total_tasks || 0;
+        document.getElementById('active-tasks').textContent = data.active_tasks || 0;
+        document.getElementById('completed-tasks').textContent = data.completed_tasks || 0;
+        document.getElementById('total-tokens').textContent = (data.total_tokens || 0).toLocaleString();
+    }
+});
+</script>
+

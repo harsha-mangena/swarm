@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Neutral palette */
+    --color-bg-primary: #0a0a0b;
+    --color-bg-secondary: #141415;
+    --color-bg-tertiary: #1c1c1e;
+    --color-bg-elevated: #242426;
+    
+    --color-text-primary: #fafafa;
+    --color-text-secondary: #a1a1aa;
+    --color-text-tertiary: #71717a;
+    
+    --color-border: #27272a;
+    --color-border-hover: #3f3f46;
+    
+    /* Semantic colors */
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #3b82f6;
+    
+    /* Brand accent */
+    --color-accent: #8b5cf6;
+    --color-accent-hover: #a78bfa;
+    
+    /* Status indicators */
+    --color-status-active: #22c55e;
+    --color-status-idle: #71717a;
+    --color-status-processing: #3b82f6;
+    --color-status-error: #ef4444;
+  }
+
+  [data-theme="light"] {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f4f4f5;
+    --color-bg-tertiary: #e4e4e7;
+    --color-bg-elevated: #ffffff;
+    
+    --color-text-primary: #18181b;
+    --color-text-secondary: #52525b;
+    --color-text-tertiary: #a1a1aa;
+    
+    --color-border: #e4e4e7;
+    --color-border-hover: #d4d4d8;
+  }
+}
+
+@layer utilities {
+  .bg-bg-primary {
+    background-color: var(--color-bg-primary);
+  }
+  .bg-bg-secondary {
+    background-color: var(--color-bg-secondary);
+  }
+  .bg-bg-tertiary {
+    background-color: var(--color-bg-tertiary);
+  }
+  .bg-bg-elevated {
+    background-color: var(--color-bg-elevated);
+  }
+  
+  .text-text-primary {
+    color: var(--color-text-primary);
+  }
+  .text-text-secondary {
+    color: var(--color-text-secondary);
+  }
+  .text-text-tertiary {
+    color: var(--color-text-tertiary);
+  }
+  
+  .border-border {
+    border-color: var(--color-border);
+  }
+  .border-border-hover {
+    border-color: var(--color-border-hover);
+  }
+  
+  .bg-success {
+    background-color: var(--color-success);
+  }
+  .text-success {
+    color: var(--color-success);
+  }
+  .bg-warning {
+    background-color: var(--color-warning);
+  }
+  .text-warning {
+    color: var(--color-warning);
+  }
+  .bg-error {
+    background-color: var(--color-error);
+  }
+  .text-error {
+    color: var(--color-error);
+  }
+  .bg-info {
+    background-color: var(--color-info);
+  }
+  .text-info {
+    color: var(--color-info);
+  }
+  
+  .bg-accent {
+    background-color: var(--color-accent);
+  }
+  .bg-accent-hover {
+    background-color: var(--color-accent-hover);
+  }
+  .text-accent {
+    color: var(--color-accent);
+  }
+}
+
