@@ -45,16 +45,16 @@ Your previous output: {context.get('previous_attempt', '')[:1000]}...
 Address the supervisor's feedback above. Focus on improving the identified weaknesses.
 </rework_instruction>"""
         
-        prompt = f"""<role>
-You are a {self.agent_type.capitalize()}, collaborating with other specialized agents 
-to solve a complex task. Your expertise: {self.agent_type} with deep analytical skills.
-</role>
+            prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology. Each reasoning unit is atomic and self-contained.
+The Markov property applies: your current state depends only on the present question, not accumulated history.
+</aot_framework>
 
-<context>
-You are part of a multi-agent team. Other agents may continue your work or build upon 
-your analysis. If you cannot fully complete the task, that's OK—provide what you can 
-so another agent can continue.
-</context>
+<role>
+You are a {self.agent_type.capitalize()} with deep analytical expertise.
+You collaborate with specialized agents, each processing independent atomic units.
+Your outputs become known conditions for dependent agents downstream.
+</role>
 
 <task>
 {task.description}
@@ -63,42 +63,121 @@ so another agent can continue.
 <original_context>
 {context.get('original_task', task.description)}
 </original_context>
-{web_context}{rework_section}
-<analytical_framework>
-Apply this structured analysis:
 
-1. SITUATION ASSESSMENT
-   - Current state identification
-   - Key metrics and indicators
-   - Relevant context
+{web_context}
+{rework_section}
 
-2. PATTERN ANALYSIS
-   - Key patterns and trends
-   - Anomalies or outliers
-   - Correlations
+<atomic_decomposition_protocol>
+PHASE 1: DECOMPOSE into atomic subquestions
 
-3. CAUSAL REASONING
-   - Root causes
-   - Contributing factors
-   - Dependencies
+Identify and classify each analytical component:
 
-4. IMPLICATIONS
-   - Short-term impacts
-   - Long-term consequences
-   - Risk assessment (high/medium/low)
+INDEPENDENT ATOMS (Q_ind) - Solvable with only task information:
+- A1: [Atomic question about current state/metrics]
+- A2: [Atomic question about patterns/trends]
+- A3: [Atomic question about causal factors]
 
-5. RECOMMENDATIONS
-   - Prioritized actions
-   - Trade-off analysis
-   - Implementation considerations
-</analytical_framework>
+DEPENDENT ATOMS (Q_dep) - Require answers from other atoms:
+- A4: [Depends on A1, A2] → Implications synthesis
+- A5: [Depends on A3, A4] → Recommendations derivation
 
-<output_requirements>
-- Provide data-driven conclusions with specific evidence
-- Quantify uncertainty where applicable (high/medium/low confidence)
-- Make recommendations actionable and prioritized
-- If you have the final answer for the team, prefix with: FINAL ANSWER
-</output_requirements>"""
+Express as DAG:
+A1 ──┐
+       ├──► A4 ──┐
+A2 ──┘         ├──► A5 (Final)
+A3 ────────────┘
+</atomic_decomposition_protocol>
+
+<atomic_solving_protocol>
+PHASE 2: SOLVE each atom independently
+
+For each INDEPENDENT atom, produce:
+```json
+{{
+   "atom_id": "A1",
+   "question": "specific atomic question",
+   "analysis": "focused analysis using only available context",
+   "conclusion": "atomic finding",
+   "evidence": ["specific data point 1", "specific data point 2"],
+   "confidence": "high|medium|low",
+   "uncertainty_source": "what would change this conclusion"
+}}
+```
+
+CRITICAL: Process each atom in isolation. Do NOT let conclusions from one atom influence another during this phase.
+</atomic_solving_protocol>
+
+<contraction_protocol>
+PHASE 3: CONTRACT dependent atoms
+
+For each DEPENDENT atom:
+1. Incorporate solved atoms as KNOWN CONDITIONS
+2. Reformulate the dependent question with these knowns
+3. Solve the contracted (simplified) question
+4. Repeat until final answer emerges
+
+Contraction format:
+```json
+{{
+   "atom_id": "A4",
+   "depends_on": ["A1", "A2"],
+   "known_conditions": {{
+      "from_A1": "extracted conclusion",
+      "from_A2": "extracted conclusion"
+   }},
+   "contracted_question": "simplified question given knowns",
+   "analysis": "reasoning on contracted question only",
+   "conclusion": "atomic finding"
+}}
+```
+</contraction_protocol>
+
+<output_schema>
+Return structured JSON:
+```json
+{{
+   "decomposition": {{
+      "independent_atoms": [
+         {{"id": "A1", "question": "...", "depends_on": []}},
+         {{"id": "A2", "question": "...", "depends_on": []}},
+         {{"id": "A3", "question": "...", "depends_on": []}}
+      ],
+      "dependent_atoms": [
+         {{"id": "A4", "question": "...", "depends_on": ["A1", "A2"]}},
+         {{"id": "A5", "question": "...", "depends_on": ["A3", "A4"]}}
+      ]
+   }},
+   "atomic_solutions": {{
+      "A1": {{"conclusion": "...", "evidence": [], "confidence": "..."}},
+      "A2": {{"conclusion": "...", "evidence": [], "confidence": "..."}},
+      "A3": {{"conclusion": "...", "evidence": [], "confidence": "..."}}
+   }},
+   "contractions": {{
+      "A4": {{"known_conditions": {{}}, "contracted_question": "...", "conclusion": "..."}},
+      "A5": {{"known_conditions": {{}}, "contracted_question": "...", "conclusion": "..."}}
+   }},
+   "final_synthesis": {{
+      "executive_summary": "2-3 sentences",
+      "key_findings": ["finding with evidence citation"],
+      "recommendations": [
+         {{"action": "...", "priority": "high|medium|low", "rationale": "from atom X"}}
+      ],
+      "risk_assessment": {{"level": "high|medium|low", "factors": []}},
+      "confidence_map": {{"A1": "high"}}
+   }}
+}}
+```
+
+If this is the final answer for the team, prefix with: FINAL ANSWER
+</output_schema>
+
+<anti_contamination_directive>
+CRITICAL: Maintain atomic independence during solving phase.
+- Do NOT cross-reference between atoms until contraction phase
+- Each atom's confidence is assessed independently
+- Conflicting conclusions between atoms must be explicitly flagged, not silently reconciled
+</anti_contamination_directive>
+"""
         content = await self._llm_call(prompt)
 
         return AgentResult(

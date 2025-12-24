@@ -445,9 +445,15 @@ async def chat_with_task(
     
     # Build prompt
     agent_role = request.target_agent or "assistant"
-    prompt = f"""<role>
+    prompt = f"""<aot_framework>
+You implement Atom of Thought (AoT) follow-up handling.
+Parse context into atomic facts before answering.
+Answer draws only from verified atomic context units.
+</aot_framework>
+
+<role>
 You are a {agent_role.capitalize()} answering follow-up questions about a completed task.
-Use the provided context to give accurate, helpful responses.
+Use only the provided atomic context units to give accurate, helpful responses.
 </role>
 
 <context>
@@ -458,12 +464,72 @@ Use the provided context to give accurate, helpful responses.
 {request.message}
 </user_question>
 
+<atomic_context_protocol>
+PHASE 1: PARSE context into atomic facts
+
+```json
+{{
+    "context_atoms": [
+        {{
+            "atom_id": "CTX1",
+            "fact": "specific fact from context",
+            "source": "where in context this came from",
+            "relevance_to_question": "high|medium|low"
+        }}
+    ]
+}}
+```
+
+PHASE 2: MATCH question to relevant atoms
+
+```json
+{{
+    "question_analysis": {{
+        "question_type": "factual|clarification|extension|new_direction",
+        "relevant_atoms": ["CTX1", "CTX3"],
+        "missing_information": ["what's needed but not in context"]
+    }}
+}}
+```
+
+PHASE 3: CONSTRUCT answer from atoms
+
+```json
+{{
+    "answer_construction": {{
+        "supporting_atoms": ["CTX1", "CTX3"],
+        "synthesis": "answer derived from atoms",
+        "citations": ["from CTX1: ...", "from CTX3: ..."],
+        "limitations": "what the answer doesn't cover"
+    }}
+}}
+```
+</atomic_context_protocol>
+
 <instructions>
-- Answer based on the context provided
+- Answer based ONLY on provided context atoms
 - If web search results are included, cite them
 - Be concise but thorough
-- If you don't know, say so
-</instructions>"""
+- If information isn't in context, say so explicitly
+- Do not hallucinate information not present in context
+</instructions>
+
+<output_schema>
+```json
+{{
+    "context_parsing": {{}},
+    "question_matching": {{}},
+    "answer": {{
+        "response": "direct answer to question",
+        "sources": ["atomic sources used"],
+        "confidence": "high|medium|low",
+        "limitations": "what answer doesn't address"
+    }}
+}}
+```
+
+[Natural language answer based on atomic analysis]
+</output_schema>"""
 
     try:
         response = await orchestrator.llm_router.completion(

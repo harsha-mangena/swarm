@@ -56,28 +56,37 @@ class ResearcherAgent(BaseAgent):
 
     async def _decompose_query(self, query: str) -> List[str]:
         """Decompose query into sub-questions"""
-        prompt = f"""<role>
-You are a research analyst breaking down complex queries into manageable sub-questions.
+        prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology.
+Decompose the research query into atomic, independently answerable sub-questions.
+</aot_framework>
+
+<role>
+You are a research analyst specializing in atomic decomposition for evidence gathering.
 </role>
 
-<instructions>
-Decompose this research query into 2-4 atomic sub-questions:
+<query>
+{query}
+</query>
 
-1. What specific FACTS are needed?
-2. What CONTEXT is required to understand the topic?
-3. What COMPARISONS or alternatives are relevant?
-4. What EVIDENCE would support conclusions?
-
-Each sub-question should be:
-- Answerable with available research tools
-- Specific and focused
-- Independent but complementary
-</instructions>
-
-<query>{query}</query>
+<atomic_decomposition_rules>
+- Each atom must be answerable via web_search/web_fetch
+- Avoid multi-part questions; one verifiable claim per atom
+- Separate definitions/context, facts/metrics, comparisons, and counterpoints
+- Mark dependencies explicitly (DAG)
+</atomic_decomposition_rules>
 
 <output_format>
-Return JSON: {{"sub_questions": ["question 1", "question 2", ...]}}
+Return JSON only:
+```json
+{{
+    "atoms": [
+        {{"id": "R1", "question": "...", "type": "definition|fact|comparison|counterpoint", "depends_on": []}},
+        {{"id": "R2", "question": "...", "type": "fact", "depends_on": []}},
+        {{"id": "R3", "question": "...", "type": "comparison", "depends_on": ["R1", "R2"]}}
+    ]
+}}
+```
 </output_format>"""
         try:
             response = await self._llm_call(prompt)
@@ -162,37 +171,64 @@ Your previous output: {rework_context.get('previous_attempt', '')[:1000]}...
 Address the supervisor's feedback. Improve based on identified weaknesses.
 </rework_instruction>"""
 
-        prompt = f"""<role>
-You are a senior research analyst synthesizing findings into a comprehensive report.
-Your expertise: systematic information gathering, source evaluation, evidence-based synthesis.
-</role>
+        prompt = f"""<aot_framework>
+    You operate using Atom of Thought (AoT) methodology.
+    Synthesis must be a contraction over atomic evidence extracted from sources.
+    </aot_framework>
 
-<context>
-You are part of a multi-agent team. If you have the final answer, prefix with: FINAL ANSWER
-</context>
+    <role>
+    You are a senior research analyst: source evaluation, evidence extraction, and rigorous synthesis.
+    </role>
 
-<research_query>
-{query}
-</research_query>
+    <research_query>
+    {query}
+    </research_query>
 
-<sources>
-{results_text}
-</sources>
-{rework_section}
-<synthesis_protocol>
-1. COMBINE findings into a coherent narrative
-2. CITE sources inline: [Source: description]
-3. FLAG conflicting information explicitly
-4. STATE confidence levels: high/medium/low
-5. IDENTIFY gaps in available information
-</synthesis_protocol>
+    <sources>
+    {results_text}
+    </sources>
+    {rework_section}
 
-<output_requirements>
-- Summary: Key findings in 2-3 sentences
-- Synthesis: Integrated narrative with inline citations
-- Conflicts: Any contradictory information found
-- Limitations: Known gaps or caveats
-- Confidence: Overall confidence in conclusions (high/medium/low)
-</output_requirements>"""
+    <atomic_evidence_extraction>
+    PHASE 1: Extract atomic claims from sources
+    - Each claim must be a single verifiable statement
+    - Attach provenance: URL + short quote/summary
+    - Assess reliability and recency
+
+    For each source, produce atomic claims:
+    ```json
+    {{
+      "source_url": "...",
+      "source_title": "...",
+      "reliability": "high|medium|low",
+      "claims": [
+        {{"claim_id": "C1", "claim": "...", "support": "quote or summary", "confidence": "high|medium|low"}}
+      ]
+    }}
+    ```
+    </atomic_evidence_extraction>
+
+    <conflict_detection>
+    PHASE 2: Identify conflicts
+    - If two claims disagree, list them explicitly
+    - Do not reconcile conflicts without additional evidence
+    </conflict_detection>
+
+    <contraction_synthesis>
+    PHASE 3: Contract claims into a final answer
+    - Use only extracted claims as known conditions
+    - If evidence is insufficient, say what is unknown and what to search next
+    </contraction_synthesis>
+
+    <output_requirements>
+    Return:
+    1) Summary (2-3 sentences)
+    2) Findings (bullets with inline citations: [URL])
+    3) Conflicts (explicit)
+    4) Limitations / Unknowns
+    5) Confidence (high/medium/low) + why
+
+    If you have the final answer, prefix with: FINAL ANSWER
+    </output_requirements>"""
         return await self._llm_call(prompt)
 

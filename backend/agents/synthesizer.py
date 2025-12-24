@@ -13,22 +13,23 @@ class SynthesizerAgent(BaseAgent):
 
     async def process(self, task: Task) -> AgentResult:
         """Synthesize final result from multiple inputs"""
-        # Extract context from task
         context = task.context or {}
         previous_work = context.get("previous_work", "")
         coordination_context = context.get("coordination_context", "")
-        
-        # Build comprehensive synthesis prompt
-        prompt = f"""<role>
-You are a Synthesis Specialist. Your task is to integrate outputs from multiple agents 
-into a unified, coherent response while preserving attribution and resolving conflicts.
+
+        prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology.
+Synthesis is performed by contracting atomic contributions from upstream agents.
+</aot_framework>
+
+<role>
+You are a Synthesis Specialist.
+You integrate outputs from multiple agents into a unified answer while preserving provenance.
 </role>
 
 <context>
-You are the final agent in a multi-agent pipeline. Your output will be the FINAL ANSWER 
-presented to the user. Ensure it is comprehensive and well-structured.
-
-You have access to web_search tool - use it to fill any gaps or verify information.
+You are the final agent in a multi-agent pipeline.
+You may use web_search to verify critical claims or fill essential gaps.
 </context>
 
 <original_task>
@@ -39,37 +40,60 @@ You have access to web_search tool - use it to fill any gaps or verify informati
 {previous_work if previous_work else coordination_context}
 </agent_outputs>
 
-<synthesis_protocol>
-1. THEME EXTRACTION
-   - Identify key themes across all agent inputs
-   - Map which agent contributed which insights
+<atomic_extraction>
+PHASE 1: Extract atomic contributions
+- Convert each agent output into a set of ATOMS (single claim, insight, step, or recommendation)
+- For each atom: attach source agent label (if present) and supporting evidence if any
 
-2. CONFLICT RESOLUTION
-   - Flag contradictions between agents
-   - Evaluate evidence strength for each position
-   - Resolve or present both perspectives with weights
+Atom format:
+```json
+{{
+   "atom_id": "S1",
+   "source": "agent_name_or_unknown",
+   "type": "fact|assumption|recommendation|code_change|risk|open_question",
+   "content": "single atomic statement",
+   "support": ["evidence or citation if provided"],
+   "confidence": "high|medium|low"
+}}
+```
+</atomic_extraction>
 
-3. INTEGRATION
-   - Weave insights into coherent narrative
-   - Preserve attribution for key claims: [Agent: insight]
-   - Eliminate redundancy while maintaining coverage
+<conflict_detection>
+PHASE 2: Detect conflicts
+- If atoms contradict, list them explicitly
+- Do not silently reconcile; choose based on evidence strength or keep both with caveats
+</conflict_detection>
 
-4. GAP IDENTIFICATION
-   - Note missing perspectives or information
-   - Flag areas that may need follow-up
-</synthesis_protocol>
+<contraction_synthesis>
+PHASE 3: Contract atoms into final response
+- Treat the set of accepted atoms as KNOWN CONDITIONS
+- Build: executive summary → main solution → tradeoffs/risks → next steps
+- Remove redundancy by merging only if semantics are identical
+</contraction_synthesis>
 
-<output_requirements>
-Your final output should include:
-1. EXECUTIVE SUMMARY: Key findings in 2-3 sentences
-2. SYNTHESIZED ANALYSIS: Full integrated narrative
-3. CONFLICTS RESOLVED: Any contradictions and how resolved
-4. ATTRIBUTION MAP: Key insights with source agent
-5. GAPS IDENTIFIED: Missing information or perspectives
+<output_schema>
+Return JSON only:
+```json
+{{
+   "atomic_contributions": [{{"atom_id": "S1", "source": "...", "type": "...", "content": "...", "confidence": "..."}}],
+   "conflicts": [
+      {{"conflict_id": "K1", "atoms": ["S1", "S2"], "resolution": "chosen|both|needs_more_info", "notes": "..."}}
+   ],
+   "gaps": ["missing info needed"],
+   "final_answer": {{
+      "executive_summary": "2-3 sentences",
+      "answer": "full user-facing answer",
+      "risks_and_tradeoffs": ["..."],
+      "next_steps": ["..."],
+      "confidence": "high|medium|low"
+   }}
+}}
+```
 
-Prefix your response with: FINAL ANSWER
-</output_requirements>"""
-        
+Prefix your message with: FINAL ANSWER
+</output_schema>
+"""
+
         content = await self._llm_call(prompt)
 
         return AgentResult(

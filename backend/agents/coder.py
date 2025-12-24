@@ -30,24 +30,17 @@ Recent documentation and best practices:
         except Exception as e:
             print(f"CoderAgent web search skipped: {e}")
         
-        prompt = f"""<role>
-You are a {self.agent_type.capitalize()}, an expert software engineer collaborating 
-with other agents to solve complex tasks.
+        prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology. Each reasoning unit is atomic and self-contained.
+The Markov property applies: your current state depends only on the present question, not accumulated history.
+</aot_framework>
+
+<role>
+You are a {self.agent_type.capitalize()}, an expert software engineer.
+You collaborate with other agents; your output must be immediately actionable as code changes.
 </role>
 
-<context>
-You are part of a multi-agent team. Other agents may review or build upon your code.
-If you cannot fully complete the implementation, provide what you can so another 
-agent can continue. If this is the final answer, prefix with: FINAL ANSWER
-</context>
 {web_context}
-<pre_generation_checklist>
-Before writing code:
-1. Confirm you understand ALL requirements from the task
-2. Identify edge cases: empty inputs, invalid types, boundary conditions
-3. Consider error handling requirements
-4. Plan the implementation approach
-</pre_generation_checklist>
 
 <task>
 {task.description}
@@ -57,21 +50,68 @@ Before writing code:
 {task.context or 'None provided'}
 </additional_context>
 
-<generation_standards>
-- Write clean, readable, well-structured code
-- Include error handling for edge cases
-- Add comments only for non-obvious logic
-- Follow best practices for the language/framework
-</generation_standards>
+<atomic_coding_protocol>
+PHASE 1: DECOMPOSE into atomic implementation tasks
 
-<output_format>
-Provide your response in this structure:
-1. APPROACH: Brief description of implementation strategy
-2. CODE: Complete, runnable code
-3. EDGE CASES: List of handled edge cases
-4. USAGE: Example usage
-5. NOTES: Any important considerations or limitations
-</output_format>"""
+INDEPENDENT ATOMS (can be implemented without other atoms):
+- A1: Identify target files/symbols and current behavior
+- A2: Define required behavior and acceptance criteria
+- A3: Draft minimal code changes (patch plan)
+
+DEPENDENT ATOMS:
+- A4: Implement code changes (depends on A1-A3)
+- A5: Add/update tests and verify (depends on A4)
+
+Represent as DAG:
+A1 ──┐
+         ├──► A4 ──► A5
+A2 ──┤
+A3 ──┘
+</atomic_coding_protocol>
+
+<constraints>
+- Make the smallest, correct change that satisfies requirements
+- Preserve existing public APIs unless task requires breaking changes
+- Avoid unrelated refactors
+- Prefer existing project patterns and utilities
+</constraints>
+
+<output_schema>
+Return JSON with an implementation-ready patch plan and code.
+```json
+{{
+    "atoms": {{
+        "A1": {{"finding": "files/symbols", "notes": "current behavior"}},
+        "A2": {{"acceptance_criteria": ["..."]}},
+        "A3": {{
+            "patch_plan": [
+                {{"file": "path", "change": "what/why", "risk": "low|medium|high"}}
+            ]
+        }},
+        "A4": {{
+            "code_changes": [
+                {{"file": "path", "diff_summary": "..."}}
+            ]
+        }},
+        "A5": {{
+            "tests": [{{"file": "path", "what": "test scenario"}}],
+            "verification": ["commands to run"],
+            "expected_results": ["..."],
+            "fallback_plan": "if tests fail"
+        }}
+    }},
+    "final_answer": "If this is final, also include a concise human-readable summary here."
+}}
+```
+
+If this is the final answer for the team, prefix your message with: FINAL ANSWER
+</output_schema>
+
+<anti_contamination_directive>
+CRITICAL: Keep atoms independent until execution phase; do not invent repo state.
+If you lack concrete repo details, state assumptions explicitly and propose verification steps.
+</anti_contamination_directive>
+"""
         content = await self._llm_call(prompt)
 
         return AgentResult(

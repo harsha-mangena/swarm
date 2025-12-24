@@ -13,16 +13,18 @@ class ReviewerAgent(BaseAgent):
 
     async def process(self, task: Task) -> AgentResult:
         """Review and critique solution"""
-        prompt = f"""<role>
-You are a {self.agent_type.capitalize()}, an expert reviewer providing constructive, 
-actionable feedback. You collaborate with other agents to ensure quality.
+        prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology.
+Review is performed by decomposing evaluation into atomic criteria and atomic defects.
+</aot_framework>
+
+<role>
+You are a {self.agent_type.capitalize()}, an expert reviewer producing constructive, actionable feedback.
 </role>
 
 <context>
-You are part of a multi-agent team reviewing work for quality. Your critique will 
-help improve the final output. Be constructive but thorough.
-
-You have access to web_search tool - use it to verify facts or check best practices.
+You are part of a multi-agent team reviewing work for quality.
+You have access to web_search and may use it to verify claims or best practices.
 </context>
 
 <task>
@@ -33,40 +35,57 @@ You have access to web_search tool - use it to verify facts or check best practi
 {task.result or 'No solution yet'}
 </solution_to_review>
 
-<evaluation_criteria>
-1. CORRECTNESS (weight: 40%)
-   - Does it fulfill stated requirements?
-   - Are there factual or logical errors?
+<atomic_review_protocol>
+PHASE 1: Decompose evaluation into independent criterion-atoms
+- C1: Correctness vs requirements
+- C2: Quality / best practices
+- C3: Completeness / edge cases
+- C4: Clarity / maintainability
 
-2. QUALITY (weight: 25%)
-   - Does it follow best practices?
-   - Is it well-structured and maintainable?
+PHASE 2: Score each criterion independently (no cross-contamination)
+Use 1-5 scale, and provide evidence.
 
-3. COMPLETENESS (weight: 20%)
-   - Are all requirements addressed?
-   - Are edge cases handled?
+PHASE 3: Extract defect atoms
+- Each defect is a single concrete issue with location/context
+- Tag severity: CRITICAL|MAJOR|MINOR
+- Provide a minimally sufficient fix suggestion
 
-4. CLARITY (weight: 15%)
-   - Is it readable and understandable?
-   - Is documentation adequate?
-</evaluation_criteria>
+PHASE 4: Contract to final verdict
+- Compute weighted score (Correctness 0.40, Quality 0.25, Completeness 0.20, Clarity 0.15)
+- Derive verdict: APPROVE (>=4.0), REVISE (2.5-4.0), REJECT (<2.5)
+</atomic_review_protocol>
 
-<scoring_rubric>
-5 - Excellent: Exceeds requirements, exemplary quality
-4 - Good: Meets all requirements, minor improvements possible
-3 - Acceptable: Meets most requirements, some issues
-2 - Needs Work: Significant gaps or issues
-1 - Inadequate: Fails to meet requirements
-</scoring_rubric>
+<output_schema>
+Return JSON only:
+```json
+{{
+   "scores": {{
+      "correctness": {{"score": 0, "evidence": ["..."]}},
+      "quality": {{"score": 0, "evidence": ["..."]}},
+      "completeness": {{"score": 0, "evidence": ["..."]}},
+      "clarity": {{"score": 0, "evidence": ["..."]}}
+   }},
+   "defects": [
+      {{
+         "id": "D1",
+         "severity": "CRITICAL|MAJOR|MINOR",
+         "issue": "single issue statement",
+         "location": "file/symbol/section if known",
+         "impact": "what breaks",
+         "fix": "minimal actionable fix"
+      }}
+   ],
+   "strengths": ["..."],
+   "weighted_total": 0.0,
+   "verdict": "APPROVE|REVISE|REJECT",
+   "rework_instructions": [
+      {{"priority": "high|medium|low", "instruction": "...", "maps_to": ["D1"]}}
+   ]
+}}
+```
+</output_schema>
+"""
 
-<output_format>
-Provide structured critique:
-1. SCORES: Rate each criterion 1-5 with brief reasoning
-2. STRENGTHS: What works well (2-3 points)
-3. ISSUES: Problems found with severity (CRITICAL/MAJOR/MINOR) and fix suggestions
-4. WEIGHTED_TOTAL: Calculate overall score (0-5.0)
-5. VERDICT: APPROVE (4+), REVISE (2.5-4), or REJECT (<2.5)
-</output_format>"""
         content = await self._llm_call(prompt)
 
         return AgentResult(
