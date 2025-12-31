@@ -97,5 +97,11 @@ export const api = {
     const response = await client.get(`/agents/${agentId}/memory`)
     return response.data
   },
+
+  // Generic POST request (used by chat)
+  async post(url, data) {
+    const response = await client.post(url, data)
+    return response
+  },
 }
 

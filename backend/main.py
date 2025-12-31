@@ -16,7 +16,7 @@ from backend.memory.postgres_store import PostgresMemoryStore
 from backend.memory.context_normalizer import ContextNormalizer
 from backend.tools.registry import ToolRegistry
 from backend.core.orchestrator import Orchestrator
-from backend.api.routes import tasks, agents, providers, files
+from backend.api.routes import tasks, agents, providers, files, settings
 from backend.api.websocket import task_websocket
 
 
@@ -120,6 +120,7 @@ app.include_router(tasks.router)
 app.include_router(agents.router)
 app.include_router(providers.router)
 app.include_router(files.router)
+app.include_router(settings.router)
 
 # WebSocket route
 @app.websocket("/ws/tasks/{task_id}")

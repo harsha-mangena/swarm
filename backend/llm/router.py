@@ -199,13 +199,25 @@ class SwarmOSRouter:
     ):
         """Execute completion with circuit breaker protection"""
 
-        # Model name mapping to actual LiteLLM model identifiers
+        # Import settings to get configured models
+        from backend.api.routes.settings import get_model_for_provider
+        
+        # Get configured models from settings
+        default_google = get_model_for_provider("google")
+        default_anthropic = get_model_for_provider("anthropic")
+        default_openai = get_model_for_provider("openai")
+        default_openrouter = get_model_for_provider("openrouter")
+        
+        # Model name mapping to actual LiteLLM model identifiers (using settings)
         model_mapping = {
             "auto": None,  # Will be handled below
-            "google": "gemini/gemini-2.0-flash-exp",
-            "gemini-flash": "gemini/gemini-2.0-flash-exp",
-            "claude-sonnet": "claude-3-5-sonnet-20241022",
-            "gpt-4o": "gpt-4o",
+            "google": default_google,
+            "gemini-flash": default_google,
+            "anthropic": default_anthropic,
+            "claude-sonnet": default_anthropic,
+            "openai": default_openai,
+            "gpt-4o": default_openai,
+            "openrouter": default_openrouter,
         }
         
         # Normalize model name to actual LiteLLM format
@@ -222,24 +234,19 @@ class SwarmOSRouter:
                         if "ollama" not in model_name.lower() and "local" not in model_name.lower():
                             model = model_name
                             break
-                # If no cloud model found, try any model
+                # If no cloud model found, use default from settings
                 if model == "auto":
-                    for router_model in self.router.model_list:
-                        if isinstance(router_model, dict) and "litellm_params" in router_model:
-                            model = router_model["litellm_params"].get("model", "gemini/gemini-2.0-flash-exp")
-                            break
-                    else:
-                        model = "gemini/gemini-2.0-flash-exp"
+                    model = default_google
             else:
-                # Fallback: use direct litellm model name (prefer Gemini)
-                model = "gemini/gemini-2.0-flash-exp"
+                # Fallback: use configured default
+                model = default_google
         elif model in model_mapping:
-            # Map to actual litellm model name
+            # Map to actual litellm model name from settings
             mapped = model_mapping[model]
             if mapped:
                 model = mapped
             else:
-                model = "gemini/gemini-2.0-flash-exp"
+                model = default_google
         elif "/" not in model and model not in ["auto"]:
             # If it's a router model_name, try to find it in router and get actual model
             if self.router and hasattr(self.router, 'model_list'):
@@ -248,15 +255,14 @@ class SwarmOSRouter:
                         if "litellm_params" in router_model:
                             model = router_model["litellm_params"].get("model", model)
                             break
-                # If still not found and doesn't have "/", it's likely invalid
+                # If still not found and doesn't have "/", use settings default
                 if "/" not in model and model not in ["auto"]:
-                    # Default to gemini
-                    model = "gemini/gemini-2.0-flash-exp"
+                    model = default_google
         # If model already has provider prefix (e.g., "gemini/..."), use it directly
         # Ensure model is in correct format before proceeding
         if "/" not in model and model != "auto":
-            # Last resort: default to gemini
-            model = "gemini/gemini-2.0-flash-exp"
+            # Last resort: use settings default
+            model = default_google
 
         provider = self._get_provider(model)
 
