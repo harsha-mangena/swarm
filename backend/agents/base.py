@@ -443,23 +443,20 @@ Generate your proposal INDEPENDENTLY, without reference to other agents' positio
         return 0.8
     
     def _map_provider_to_model(self, provider: str) -> str:
-        """Map provider name to actual LiteLLM model name"""
-        if provider == "google":
-            return "gemini/gemini-2.0-flash-exp"  # Use Gemini Flash 2.0 when Google is selected
-        elif provider == "anthropic":
-            return "claude-3-5-sonnet-20241022"
-        elif provider == "openai":
-            return "gpt-4o"
-        elif provider == "openrouter":
-            return "openrouter/gemini/gemini-2.0-flash-exp"
-        elif provider == "gemini-flash":
-            return "gemini/gemini-2.0-flash-exp"  # Map to actual model name
-        elif provider == "claude-sonnet":
-            return "claude-3-5-sonnet-20241022"
-        elif provider == "gpt-4o":
-            return "gpt-4o"
-        elif provider == "auto":
+        """Map provider name to actual LiteLLM model name using settings"""
+        # Import here to avoid circular imports
+        from backend.api.routes.settings import get_model_for_provider
+        
+        if provider == "auto":
             return "auto"  # Let router decide
+        elif provider in ["google", "anthropic", "openai", "openrouter"]:
+            return get_model_for_provider(provider)
+        elif provider == "gemini-flash":
+            return get_model_for_provider("google")
+        elif provider == "claude-sonnet":
+            return get_model_for_provider("anthropic")
+        elif provider == "gpt-4o":
+            return get_model_for_provider("openai")
         else:
             # If it already has a provider prefix, use it directly
             if "/" in provider:

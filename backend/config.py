@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     openrouter_api_key: Optional[str] = None
 
+    # Model preferences (user-configurable via settings)
+    google_model: str = "gemini/gemini-1.5-flash"
+    anthropic_model: str = "claude-3-5-sonnet-20241022"
+    openai_model: str = "gpt-4o"
+    openrouter_model: str = "openrouter/anthropic/claude-3-sonnet"
+
     # Tools
     tavily_api_key: Optional[str] = None
     brave_api_key: Optional[str] = None
