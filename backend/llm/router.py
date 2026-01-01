@@ -278,11 +278,14 @@ class SwarmOSRouter:
 
         try:
             # Build completion kwargs
+            # Set explicit max_tokens to prevent truncation
+            effective_max_tokens = max_tokens if max_tokens else 4096
+            
             completion_kwargs = {
                 "model": model,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": max_tokens,
+                "max_tokens": effective_max_tokens,
                 "tools": tools,
                 "stream": stream,
             }
@@ -321,6 +324,32 @@ class SwarmOSRouter:
             
             try:
                 response = await litellm_acompletion(**completion_kwargs)
+                
+                # Check for truncation and attempt continuation
+                if (hasattr(response, 'choices') and 
+                    response.choices and 
+                    hasattr(response.choices[0], 'finish_reason') and
+                    response.choices[0].finish_reason == "length"):
+                    
+                    print(f"Output truncated for model {model}, attempting continuation...")
+                    
+                    # Get the partial content
+                    partial_content = response.choices[0].message.content or ""
+                    
+                    # Request continuation
+                    continuation_messages = messages + [
+                        {"role": "assistant", "content": partial_content},
+                        {"role": "user", "content": "Continue from exactly where you left off. Do not repeat any previous content."}
+                    ]
+                    
+                    continuation_kwargs = {**completion_kwargs, "messages": continuation_messages}
+                    continuation_response = await litellm_acompletion(**continuation_kwargs)
+                    
+                    # Combine responses
+                    continuation_content = continuation_response.choices[0].message.content or ""
+                    response.choices[0].message.content = partial_content + "\n" + continuation_content
+                    print("Continuation successful, combined output returned.")
+                    
             finally:
                 # Restore original environment variables
                 for key, value in original_env.items():

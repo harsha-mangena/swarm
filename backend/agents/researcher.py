@@ -4,6 +4,8 @@ from typing import List, Dict, Any
 from backend.agents.base import BaseAgent, AgentResult
 from backend.models.task import Task
 from backend.models.agent import AgentCapability
+from backend.prompts.citation_requirements import CITATION_INSTRUCTIONS, SOURCE_USAGE_INSTRUCTIONS
+from backend.prompts.depth_requirements import DEPTH_REQUIREMENTS, FORBIDDEN_OUTPUTS
 
 
 class ResearcherAgent(BaseAgent):
@@ -46,12 +48,25 @@ class ResearcherAgent(BaseAgent):
         # Synthesize findings (with rework context if applicable)
         synthesis = await self._synthesize(query, all_results, context if is_rework else None)
 
+        # Build sources metadata for tracking
+        sources_metadata = [
+            {
+                "index": i + 1,
+                "title": r.get("title", "Untitled"),
+                "url": r.get("url", ""),
+                "snippet": r.get("content", "")[:200]
+            }
+            for i, r in enumerate(all_results[:10])
+        ]
+
         return AgentResult(
             agent_id=self.id,
             task_id=task.id,
             content=synthesis,
             confidence=0.9 if is_rework else 0.8,
             evidence=[r.get("url", "") for r in all_results[:5]],
+            sources=sources_metadata,
+            metadata={"agent_type": self.agent_type}
         )
 
     async def _decompose_query(self, query: str) -> List[str]:
@@ -140,13 +155,16 @@ Return JSON: {{"sub_questions": ["question 1", "question 2", ...]}}
         return all_results
 
     async def _synthesize(self, query: str, results: List[Dict], rework_context: Dict = None) -> str:
-        """Synthesize research findings"""
-        results_text = "\n\n".join(
-            [
-                f"Source: {r.get('title', 'Unknown')}\nURL: {r.get('url', '')}\nContent: {r.get('content', '')[:500]}"
-                for r in results[:10]
-            ]
-        )
+        """Synthesize research findings with numbered citations"""
+        # Format results with numbered indices for citation
+        results_parts = []
+        for i, r in enumerate(results[:10], 1):
+            title = r.get('title', 'Untitled')
+            url = r.get('url', '')
+            content = r.get('content', '')[:500]
+            results_parts.append(f"[{i}] {title}\nURL: {url}\nContent: {content}")
+        
+        results_text = "\n\n".join(results_parts)
         
         # Build rework section if applicable
         rework_section = ""
@@ -178,21 +196,29 @@ You are part of a multi-agent team. If you have the final answer, prefix with: F
 <sources>
 {results_text}
 </sources>
+
+{SOURCE_USAGE_INSTRUCTIONS}
+{CITATION_INSTRUCTIONS}
+{DEPTH_REQUIREMENTS}
+{FORBIDDEN_OUTPUTS}
+
 {rework_section}
 <synthesis_protocol>
-1. COMBINE findings into a coherent narrative
-2. CITE sources inline: [Source: description]
-3. FLAG conflicting information explicitly
-4. STATE confidence levels: high/medium/low
+1. COMBINE findings into a coherent, comprehensive narrative
+2. CITE sources using numbered format: [1], [2], [3]
+3. FLAG conflicting information explicitly with citations
+4. STATE confidence levels: high/medium/low with reasoning
 5. IDENTIFY gaps in available information
 </synthesis_protocol>
 
 <output_requirements>
-- Summary: Key findings in 2-3 sentences
-- Synthesis: Integrated narrative with inline citations
-- Conflicts: Any contradictory information found
-- Limitations: Known gaps or caveats
-- Confidence: Overall confidence in conclusions (high/medium/low)
+Your response MUST include:
+- EXECUTIVE SUMMARY: Key findings in 2-3 sentences
+- DETAILED SYNTHESIS: Integrated narrative with [1], [2], [3] citations
+- CONFLICTS: Any contradictory information with both sources cited
+- LIMITATIONS: Known gaps or caveats  
+- CONFIDENCE: Overall confidence with justification
+- Minimum 600 words of substantive content
 </output_requirements>"""
         return await self._llm_call(prompt)
 

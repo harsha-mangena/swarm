@@ -23,6 +23,7 @@ class AgentResult(BaseModel):
     metadata: Dict[str, Any] = {}
     tokens_used: int = 0
     error: Optional[str] = None
+    sources: List[Dict[str, Any]] = []  # [{index, title, url, snippet}]
 
 
 class BaseAgent(ABC):
@@ -60,13 +61,13 @@ class BaseAgent(ABC):
             raise ValueError("Tool registry not available")
         return await self.tools.execute(tool_name, params)
 
-    async def auto_web_search(self, query: str, max_results: int = 5) -> str:
+    async def auto_web_search(self, query: str, max_results: int = 5) -> tuple:
         """
         Autonomous web search capability - agents can call this independently.
-        Returns formatted search results as context.
+        Returns tuple of (formatted_text, sources_metadata) for citation tracking.
         """
         if not self.tools:
-            return ""
+            return "", []
         
         try:
             results = await self.tools.execute("web_search", {
@@ -75,20 +76,28 @@ class BaseAgent(ABC):
             })
             
             if not results:
-                return ""
+                return "No sources available.", []
             
-            # Format results as context
+            # Format results with numbered indices for citation
             formatted = []
+            sources_metadata = []
             for i, result in enumerate(results[:max_results], 1):
-                title = result.get("title", "")
+                title = result.get("title", "Untitled")
                 snippet = result.get("snippet", result.get("content", ""))[:500]
                 url = result.get("url", "")
-                formatted.append(f"[{i}] {title}\n{snippet}\nSource: {url}")
+                
+                formatted.append(f"[{i}] {title}\nURL: {url}\nContent: {snippet}")
+                sources_metadata.append({
+                    "index": i,
+                    "title": title,
+                    "url": url,
+                    "snippet": snippet[:200]
+                })
             
-            return "\n\n".join(formatted)
+            return "\n\n".join(formatted), sources_metadata
         except Exception as e:
             print(f"Web search failed for {self.agent_type}: {e}")
-            return ""
+            return "", []
 
     async def generate_proposal(
         self,
