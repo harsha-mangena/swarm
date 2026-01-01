@@ -1,10 +1,26 @@
 import axios from 'axios'
+import { supabase, isSupabaseConfigured } from './supabase'
 
 const client = axios.create({
   baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+// Add auth token to all requests if Supabase is configured
+client.interceptors.request.use(async (config) => {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession()
+      if (data?.session?.access_token) {
+        config.headers.Authorization = `Bearer ${data.session.access_token}`
+      }
+    } catch (e) {
+      console.error('Failed to get auth session:', e)
+    }
+  }
+  return config
 })
 
 export const api = {
