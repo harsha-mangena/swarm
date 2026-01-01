@@ -13,11 +13,13 @@ from backend.memory.manager import MemoryManager
 from backend.memory.redis_store import RedisMemoryStore
 from backend.memory.vector_store import QdrantMemoryStore
 from backend.memory.postgres_store import PostgresMemoryStore
+from backend.memory.supabase_store import SupabaseStore
 from backend.memory.context_normalizer import ContextNormalizer
 from backend.tools.registry import ToolRegistry
 from backend.core.orchestrator import Orchestrator
 from backend.api.routes import tasks, agents, providers, files, settings
 from backend.api.websocket import task_websocket
+from backend.supabase_client import is_supabase_configured
 
 
 @asynccontextmanager
@@ -37,19 +39,34 @@ async def lifespan(app: FastAPI):
     qdrant_store = QdrantMemoryStore()
     try:
         await qdrant_store.connect()
+        print("✓ Qdrant connected successfully")
     except Exception as e:
         print(f"Warning: Qdrant connection failed: {e}. Continuing without Qdrant.")
         qdrant_store = None
 
-    postgres_store = PostgresMemoryStore()
-    try:
-        await postgres_store.connect()
-    except Exception as e:
-        print(f"Warning: PostgreSQL connection failed: {e}. Continuing without PostgreSQL.")
-        postgres_store = None
+    # Use Supabase if configured, otherwise fall back to PostgreSQL
+    persistent_store = None
+    if is_supabase_configured():
+        try:
+            persistent_store = SupabaseStore()
+            print("✓ Using Supabase for persistent storage")
+        except Exception as e:
+            print(f"Warning: Supabase initialization failed: {e}")
+            persistent_store = None
+    
+    # Fall back to PostgreSQL if Supabase not configured or failed
+    if persistent_store is None:
+        postgres_store = PostgresMemoryStore()
+        try:
+            await postgres_store.connect()
+            persistent_store = postgres_store
+            print("✓ Using PostgreSQL for persistent storage")
+        except Exception as e:
+            print(f"Warning: PostgreSQL connection failed: {e}. Continuing without persistent storage.")
+            persistent_store = None
 
     normalizer = ContextNormalizer()
-    memory = MemoryManager(redis_store, qdrant_store, postgres_store, normalizer)
+    memory = MemoryManager(redis_store, qdrant_store, persistent_store, normalizer)
 
     # Initialize tools
     tools = ToolRegistry()
@@ -62,6 +79,7 @@ async def lifespan(app: FastAPI):
     app.state.memory = memory
     app.state.tools = tools
     app.state.orchestrator = orchestrator
+    app.state.persistent_store = persistent_store  # Store reference for API access
 
     yield
 
@@ -76,9 +94,10 @@ async def lifespan(app: FastAPI):
             await qdrant_store.disconnect()
         except:
             pass
-    if postgres_store:
+    # persistent_store may be Supabase (no disconnect needed) or PostgreSQL
+    if persistent_store and hasattr(persistent_store, 'disconnect'):
         try:
-            await postgres_store.disconnect()
+            await persistent_store.disconnect()
         except:
             pass
 

@@ -17,6 +17,7 @@ from backend.core.orchestrator import Orchestrator
 from backend.memory.manager import MemoryManager
 from backend.memory.postgres_store import PostgresMemoryStore
 from backend.models.memory import MemoryScope
+from backend.api.auth_middleware import get_optional_user, AuthUser
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -89,6 +90,7 @@ async def create_task(
     background_tasks: BackgroundTasks,
     orchestrator: Orchestrator = Depends(get_orchestrator),
     postgres_store: Optional[PostgresMemoryStore] = Depends(get_postgres_store),
+    current_user: Optional[AuthUser] = Depends(get_optional_user),
 ):
     """Create and optionally execute a task"""
     try:

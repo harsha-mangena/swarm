@@ -7,10 +7,16 @@ from typing import Optional
 class Settings(BaseSettings):
     """Application settings"""
 
-    # Database
+    # Supabase
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_key: str = ""
+
+    # Database (legacy - kept for migration)
     database_url: str = "postgresql+asyncpg://swarmos:swarmos_dev@localhost:5432/swarmos"
     redis_url: str = "redis://localhost:6379/0"
     qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: Optional[str] = None
 
     # LLM Providers
     anthropic_api_key: Optional[str] = None

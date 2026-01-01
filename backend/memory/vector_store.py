@@ -15,7 +15,14 @@ class QdrantMemoryStore:
 
     async def connect(self):
         """Connect to Qdrant"""
-        self.client = AsyncQdrantClient(url=settings.qdrant_url)
+        # Use API key if provided (for Qdrant Cloud)
+        if settings.qdrant_api_key:
+            self.client = AsyncQdrantClient(
+                url=settings.qdrant_url,
+                api_key=settings.qdrant_api_key
+            )
+        else:
+            self.client = AsyncQdrantClient(url=settings.qdrant_url)
 
     async def disconnect(self):
         """Disconnect from Qdrant"""

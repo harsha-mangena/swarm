@@ -30,6 +30,25 @@
       
       <div class="flex items-center gap-4">
         <ProviderBadge />
+        
+        <!-- User info and logout -->
+        <div v-if="user" class="flex items-center gap-3">
+          <span class="text-sm text-text-secondary">{{ user.email }}</span>
+          <button
+            @click="handleLogout"
+            class="text-sm text-text-tertiary hover:text-text-primary transition-colors"
+          >
+            Logout
+          </button>
+        </div>
+        <router-link
+          v-else-if="isSupabaseConfigured()"
+          to="/login"
+          class="text-sm text-accent hover:underline"
+        >
+          Login
+        </router-link>
+        
         <button 
           @click="toggleTheme"
           class="p-2 rounded-lg hover:bg-bg-tertiary text-text-primary transition-colors"
@@ -48,12 +67,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ProviderBadge from './ProviderBadge.vue'
+import { getUser, signOut, onAuthStateChange, isSupabaseConfigured } from '../services/supabase'
 
 const route = useRoute()
+const router = useRouter()
 const dark = ref(true)
+const user = ref(null)
 
 const isActive = (path) => {
   if (path === '/') {
@@ -67,7 +89,37 @@ const toggleTheme = () => {
   document.documentElement.dataset.theme = dark.value ? 'dark' : 'light'
 }
 
-onMounted(() => {
+const handleLogout = async () => {
+  try {
+    await signOut()
+    user.value = null
+    router.push('/login')
+  } catch (e) {
+    console.error('Logout failed:', e)
+  }
+}
+
+let authSubscription = null
+
+onMounted(async () => {
   dark.value = document.documentElement.dataset.theme === 'dark'
+  
+  // Get initial user
+  if (isSupabaseConfigured()) {
+    user.value = await getUser()
+    
+    // Subscribe to auth changes
+    const { data } = onAuthStateChange((event, session) => {
+      user.value = session?.user || null
+    })
+    authSubscription = data.subscription
+  }
+})
+
+onUnmounted(() => {
+  if (authSubscription) {
+    authSubscription.unsubscribe()
+  }
 })
 </script>
+

@@ -316,6 +316,42 @@
                 </h3>
                 <div class="bg-bg-tertiary rounded-xl p-6 border border-border markdown-content" v-html="renderMarkdown(subtasks[selectedAgentIndex].result)"></div>
               </div>
+              
+              <!-- Sources Section -->
+              <div v-if="subtasks[selectedAgentIndex].sources?.length" class="p-6 border-t border-border">
+                <h3 class="text-xs text-text-tertiary mb-4 uppercase tracking-wide flex items-center gap-2">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                  </svg>
+                  <span>Sources ({{ subtasks[selectedAgentIndex].sources.length }})</span>
+                </h3>
+                <div class="bg-bg-tertiary rounded-xl border border-border divide-y divide-border">
+                  <div 
+                    v-for="source in subtasks[selectedAgentIndex].sources" 
+                    :key="source.index"
+                    class="p-4 hover:bg-bg-primary/50 transition-colors"
+                  >
+                    <div class="flex items-start gap-3">
+                      <span class="flex-shrink-0 w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-medium flex items-center justify-center">
+                        {{ source.index }}
+                      </span>
+                      <div class="flex-1 min-w-0">
+                        <a 
+                          :href="source.url" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="text-sm font-medium text-accent hover:underline line-clamp-1"
+                        >
+                          {{ source.title || 'Untitled Source' }}
+                        </a>
+                        <p class="text-xs text-text-tertiary mt-1 line-clamp-2">{{ source.snippet }}</p>
+                        <p class="text-xs text-text-tertiary/70 mt-1 truncate">{{ source.url }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <div v-else class="p-6">
                 <div class="bg-bg-tertiary rounded-xl p-8 border border-dashed border-border text-center">
                   <p class="text-text-tertiary text-sm">Agent hasn't produced output yet</p>

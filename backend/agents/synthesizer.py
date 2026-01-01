@@ -3,6 +3,7 @@
 from backend.agents.base import BaseAgent, AgentResult
 from backend.models.task import Task
 from backend.models.agent import AgentCapability
+from backend.prompts.depth_requirements import DEPTH_REQUIREMENTS, FORBIDDEN_OUTPUTS
 
 
 class SynthesizerAgent(BaseAgent):
@@ -37,7 +38,7 @@ You may use web_search to verify critical claims or fill essential gaps.
 </original_task>
 
 <agent_outputs>
-{previous_work if previous_work else coordination_context}
+{agent_outputs_text}
 </agent_outputs>
 
 <atomic_extraction>
@@ -96,10 +97,18 @@ Prefix your message with: FINAL ANSWER
 
         content = await self._llm_call(prompt)
 
+        # Check for completeness indicators
+        if len(content) < 500:
+            # Output seems too short, add warning
+            content = f"[WARNING: Output may be incomplete]\n\n{content}"
+
         return AgentResult(
             agent_id=self.id,
             task_id=task.id,
             content=content,
             confidence=0.85,
+            sources=supplementary_sources,
+            metadata={"agent_type": self.agent_type}
         )
+
 
