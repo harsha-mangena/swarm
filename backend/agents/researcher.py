@@ -71,28 +71,37 @@ class ResearcherAgent(BaseAgent):
 
     async def _decompose_query(self, query: str) -> List[str]:
         """Decompose query into sub-questions"""
-        prompt = f"""<role>
-You are a research analyst breaking down complex queries into manageable sub-questions.
+        prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology.
+Decompose the research query into atomic, independently answerable sub-questions.
+</aot_framework>
+
+<role>
+You are a research analyst specializing in atomic decomposition for evidence gathering.
 </role>
 
-<instructions>
-Decompose this research query into 2-4 atomic sub-questions:
+<query>
+{query}
+</query>
 
-1. What specific FACTS are needed?
-2. What CONTEXT is required to understand the topic?
-3. What COMPARISONS or alternatives are relevant?
-4. What EVIDENCE would support conclusions?
-
-Each sub-question should be:
-- Answerable with available research tools
-- Specific and focused
-- Independent but complementary
-</instructions>
-
-<query>{query}</query>
+<atomic_decomposition_rules>
+- Each atom must be answerable via web_search/web_fetch
+- Avoid multi-part questions; one verifiable claim per atom
+- Separate definitions/context, facts/metrics, comparisons, and counterpoints
+- Mark dependencies explicitly (DAG)
+</atomic_decomposition_rules>
 
 <output_format>
-Return JSON: {{"sub_questions": ["question 1", "question 2", ...]}}
+Return JSON only:
+```json
+{{
+    "atoms": [
+        {{"id": "R1", "question": "...", "type": "definition|fact|comparison|counterpoint", "depends_on": []}},
+        {{"id": "R2", "question": "...", "type": "fact", "depends_on": []}},
+        {{"id": "R3", "question": "...", "type": "comparison", "depends_on": ["R1", "R2"]}}
+    ]
+}}
+```
 </output_format>"""
         try:
             response = await self._llm_call(prompt)

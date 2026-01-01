@@ -118,9 +118,16 @@ class BaseAgent(ABC):
 
     async def critique_proposal(self, proposal: Dict, critique_prompt: str) -> Dict:
         """Critique another agent's proposal"""
-        prompt = f"""<role>
+        prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology for critique.
+Each claim is evaluated as an independent atomic unit.
+Your critique targets specific atoms, not holistic impressions.
+</aot_framework>
+
+<role>
 You are a critical evaluator in a multi-agent debate.
-Your goal: improve proposal quality through rigorous but constructive critique.
+Goal: Improve proposal quality through atomic-level critique.
+You assess each claim independently before synthesis.
 </role>
 
 <critique_context>
@@ -131,28 +138,106 @@ Your goal: improve proposal quality through rigorous but constructive critique.
 {proposal.get('content', '')}
 </proposal_to_critique>
 
-<critique_guidelines>
+<atomic_extraction_protocol>
+PHASE 1: EXTRACT atomic claims from proposal
+
+Parse the proposal into discrete, evaluable units:
+```json
+{{
+    "claims": [
+        {{"id": "C1", "statement": "exact claim text", "type": "factual|logical|evaluative"}},
+        {{"id": "C2", "statement": "exact claim text", "type": "factual|logical|evaluative"}}
+    ],
+    "dependencies": [
+        {{"claim": "C2", "depends_on": ["C1"], "relationship": "supports|contradicts|extends"}}
+    ]
+}}
+```
+</atomic_extraction_protocol>
+
+<atomic_critique_protocol>
+PHASE 2: CRITIQUE each atom independently
+
+For each claim, evaluate IN ISOLATION:
+```json
+{{
+    "claim_id": "C1",
+    "claim_text": "...",
+    "critique": {{
+        "validity": "valid|flawed|unverifiable",
+        "flaw_type": "logical_flaw|missing_evidence|oversimplification|false_premise|none",
+        "counter_evidence": "specific counter-argument or evidence",
+        "alternative_interpretation": "different way to view this specific claim",
+        "strength_score": 1,
+        "justification": "why this score"
+    }}
+}}
+```
+
+CRITICAL: Evaluate each claim as if you haven't seen the others. Do NOT let a strong claim bias evaluation of weak claims or vice versa.
+</atomic_critique_protocol>
+
+<dependency_analysis_protocol>
+PHASE 3: ANALYZE dependency impacts
+
+After independent evaluation, assess how flaws propagate:
+```json
+{{
+    "propagation_analysis": [
+        {{
+            "source_flaw": "C1",
+            "affected_claims": ["C2", "C3"],
+            "impact": "If C1 is false, then C2 and C3 collapse because..."
+        }}
+    ]
+}}
+```
+</dependency_analysis_protocol>
+
+<output_schema>
+Return valid JSON:
+```json
+{{
+    "atomic_extractions": {{
+        "claims": [],
+        "dependencies": []
+    }},
+    "atomic_critiques": [
+        {{
+            "claim_id": "C1",
+            "validity": "...",
+            "flaw_type": "...",
+            "counter_evidence": "...",
+            "alternative_interpretation": "...",
+            "strength_score": 7
+        }}
+    ],
+    "propagation_analysis": [],
+    "synthesis": {{
+        "valid_points": ["C1 is well-supported because..."],
+        "critical_flaws": ["C2 has fatal flaw: ..."],
+        "aggregate_score": 6.5,
+        "decision": "AGREE|DISAGREE|PARTIALLY_AGREE",
+        "decision_rationale": "Based on atomic analysis, the proposal..."
+    }}
+}}
+```
+</output_schema>
+
+<critique_constraints>
 MUST DO:
 - Target specific claims with specific counterarguments
 - Cite evidence when challenging assertions
-- Propose alternative interpretations
-- Acknowledge valid points before critiquing
+- Evaluate each atom before forming overall judgment
+- Acknowledge valid points explicitly
 
 MUST NOT:
-- Dismiss arguments without substantive counter-evidence
-- Use ad hominem or emotional language
+- Dismiss arguments without atomic-level analysis
+- Let overall impression bias individual claim evaluation
 - Critique style over substance
-- Completely reject without offering alternatives
-</critique_guidelines>
-
-<output_format>
-1. VALID_POINTS: What is well-supported in this proposal?
-2. CRITIQUES: Specific issues with weakness_type (logical_flaw/missing_evidence/oversimplification/false_premise)
-3. COUNTER_EVIDENCE: Evidence supporting your critiques
-4. ALTERNATIVE_INTERPRETATIONS: Different ways to view the topic
-5. SCORE: 1-10 with justification
-6. DECISION: AGREE / DISAGREE / PARTIALLY_AGREE
-</output_format>"""
+- Reject without offering specific alternatives
+</critique_constraints>
+"""
         response = await self._llm_call(prompt)
         # Parse response (simplified - in production would use structured output)
         return {
@@ -173,9 +258,16 @@ MUST NOT:
             ]
         )
 
-        prompt = f"""<role>
+        prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology for voting.
+Each evaluation criterion is an independent atomic assessment.
+Aggregate scores emerge from atomic evaluations, not gestalt impressions.
+</aot_framework>
+
+<role>
 You are voting on the best solution in a multi-agent debate.
-Form your judgment independently before providing reasoning.
+You must evaluate each proposal on each criterion independently.
+Form atomic judgments first, then aggregate to final selection.
 </role>
 
 <voting_criteria>
@@ -186,25 +278,96 @@ Form your judgment independently before providing reasoning.
 {proposals_text}
 </proposals>
 
-<voting_protocol>
-1. Review each solution independently
-2. Score each against these criteria:
-   - Accuracy: Factual correctness
-   - Completeness: Addresses all aspects
-   - Reasoning: Logical coherence
-   - Practicality: Implementability
-3. Select the SINGLE best solution
-4. Provide reasoning AFTER your selection
+<atomic_evaluation_protocol>
+PHASE 1: DECOMPOSE evaluation into atomic assessments
 
-IMPORTANT: You must select exactly ONE proposal. Do not vote for multiple.
-</voting_protocol>
+For each proposal × criterion combination, evaluate independently:
+```json
+{{
+    "proposal_id": 1,
+    "criterion": "accuracy",
+    "atomic_assessment": {{
+        "score": 8,
+        "evidence": "specific text from proposal supporting this score",
+        "weakness": "specific limitation on this criterion"
+    }}
+}}
+```
 
-<output_format>
-1. SELECTED: Proposal number (1-{len(proposals)})
-2. SCORES: Brief score for each proposal on the criteria
-3. REASONING: Why the selected proposal is best
-4. CONFIDENCE: Your confidence in this selection (high/medium/low)
-</output_format>"""
+Evaluation criteria atoms:
+- A_accuracy: Factual correctness (weight: 0.30)
+- A_completeness: Addresses all aspects (weight: 0.25)
+- A_reasoning: Logical coherence (weight: 0.25)
+- A_practicality: Implementability (weight: 0.20)
+
+CRITICAL: Score each criterion for each proposal BEFORE comparing proposals. Do NOT let strength on one criterion bias others.
+</atomic_evaluation_protocol>
+
+<atomic_scoring_matrix>
+PHASE 2: BUILD scoring matrix
+
+```json
+{{
+    "scoring_matrix": {{
+        "proposal_1": {{
+            "accuracy": {{"score": 8, "evidence": "..."}},
+            "completeness": {{"score": 7, "evidence": "..."}},
+            "reasoning": {{"score": 9, "evidence": "..."}},
+            "practicality": {{"score": 6, "evidence": "..."}}
+        }},
+        "proposal_2": {{
+            "accuracy": {{"score": 7, "evidence": "..."}},
+            "completeness": {{"score": 8, "evidence": "..."}},
+            "reasoning": {{"score": 7, "evidence": "..."}},
+            "practicality": {{"score": 8, "evidence": "..."}}
+        }}
+    }}
+}}
+```
+</atomic_scoring_matrix>
+
+<aggregation_protocol>
+PHASE 3: AGGREGATE using weighted contraction
+
+Calculate weighted scores:
+```json
+{{
+    "weighted_totals": {{
+        "proposal_1": "0.30×8 + 0.25×7 + 0.25×9 + 0.20×6 = 7.6",
+        "proposal_2": "0.30×7 + 0.25×8 + 0.25×7 + 0.20×8 = 7.45"
+    }},
+    "ranking": [1, 2]
+}}
+```
+</aggregation_protocol>
+
+<output_schema>
+Return valid JSON and select exactly ONE proposal.
+```json
+{{
+    "atomic_evaluations": [
+        {{"proposal": 1, "criterion": "accuracy", "score": 8, "evidence": "..."}},
+        {{"proposal": 1, "criterion": "completeness", "score": 7, "evidence": "..."}}
+    ],
+    "scoring_matrix": {{}},
+    "weighted_totals": {{}},
+    "selection": {{
+        "selected_proposal": 1,
+        "weighted_score": 7.6,
+        "margin_over_second": 0.15,
+        "confidence": "high|medium|low"
+    }},
+    "reasoning": {{
+        "primary_differentiator": "...",
+        "trade_offs": "...",
+        "dissenting_consideration": "..."
+    }}
+}}
+```
+
+IMPORTANT: You must select exactly ONE proposal. Selection based on atomic aggregation, not impression.
+</output_schema>
+"""
         response = await self._llm_call(prompt)
         # Parse to get selected proposal ID
         selected_id = proposals[0].get("agent_id", "") if proposals else ""

@@ -49,16 +49,16 @@ Your previous output: {context.get('previous_attempt', '')[:1000]}...
 Address the supervisor's feedback above. Focus on improving the identified weaknesses.
 </rework_instruction>"""
         
-        prompt = f"""<role>
-You are a {self.agent_type.capitalize()}, collaborating with other specialized agents 
-to solve a complex task. Your expertise: {self.agent_type} with deep analytical skills.
-</role>
+            prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology. Each reasoning unit is atomic and self-contained.
+The Markov property applies: your current state depends only on the present question, not accumulated history.
+</aot_framework>
 
-<context>
-You are part of a multi-agent team. Other agents may continue your work or build upon 
-your analysis. If you cannot fully complete the task, that's OK—provide what you can 
-so another agent can continue.
-</context>
+<role>
+You are a {self.agent_type.capitalize()} with deep analytical expertise.
+You collaborate with specialized agents, each processing independent atomic units.
+Your outputs become known conditions for dependent agents downstream.
+</role>
 
 <task>
 {task.description}

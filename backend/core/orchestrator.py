@@ -610,7 +610,12 @@ class Orchestrator:
                 for agent, result in zip(agents, results)
             ])
             
-            critique_prompt = f"""<role>
+            critique_prompt = f"""<aot_framework>
+You operate using Atom of Thought (AoT) methodology.
+Validate the combined output by decomposing evaluation into atomic criteria and atomic defects.
+</aot_framework>
+
+<role>
 You are validating the combined output from a multi-agent team.
 </role>
 
@@ -622,20 +627,41 @@ You are validating the combined output from a multi-agent team.
 {combined_results[:4000]}
 </work_completed>
 
-<evaluation_criteria>
-1. CORRECTNESS: Are all facts accurate?
-2. COMPLETENESS: Is the task fully addressed?
-3. QUALITY: Does it follow best practices?
-4. COHERENCE: Is the combined output well-integrated?
-</evaluation_criteria>
+<atomic_validation_protocol>
+PHASE 1: Independent criterion atoms
+- V1: Correctness (facts, logic)
+- V2: Completeness (requirements, edge cases)
+- V3: Quality (best practices)
+- V4: Coherence (integration, contradictions)
 
-<output_format>
-1. STRENGTHS: What was done well (2-3 points)
-2. ISSUES: Problems detected with severity (CRITICAL/MAJOR/MINOR)
-3. COMPLETENESS: Is task fully addressed? (yes/partial/no)
-4. SCORE: Overall quality 1-10 with justification
-5. SUGGESTIONS: Specific improvements if score < 8
-</output_format>"""
+PHASE 2: Defect atoms
+- Each defect is a single concrete issue with severity CRITICAL|MAJOR|MINOR
+- Provide a minimal fix instruction
+
+PHASE 3: Contract to score and verdict
+- Compute an overall score 1-10 based on criterion scores and defect severity
+- Provide rework instructions if score < 8
+</atomic_validation_protocol>
+
+<output_schema>
+Return JSON only:
+```json
+{{
+    "criteria": {{
+        "correctness": {{"score": 0, "evidence": []}},
+        "completeness": {{"score": 0, "evidence": []}},
+        "quality": {{"score": 0, "evidence": []}},
+        "coherence": {{"score": 0, "evidence": []}}
+    }},
+    "strengths": ["..."],
+    "defects": [
+        {{"id": "D1", "severity": "CRITICAL|MAJOR|MINOR", "issue": "...", "fix": "..."}}
+    ],
+    "overall": {{"score": 0, "justification": "...", "completeness": "yes|partial|no"}},
+    "rework_instructions": ["..."]
+}}
+```
+</output_schema>"""
             
             # Use first agent (or reviewer if available) for validation
             validator = next((a for a in agents if a.agent_type == "reviewer"), agents[0])
@@ -680,45 +706,57 @@ You are validating the combined output from a multi-agent team.
         critiques = validation_results.get("critiques", [])
         critique_text = "\n".join([c.get("critique", "")[:500] for c in critiques]) if critiques else "No critiques"
         
-        synthesis_prompt = f"""<role>
-You are creating the FINAL ANSWER for a multi-agent task.
-Your output will be presented directly to the user.
-</role>
+        synthesis_prompt = f"""<aot_framework>
+    You operate using Atom of Thought (AoT) methodology.
+    Your job is to contract multi-agent contributions into a single, user-facing FINAL ANSWER.
+    </aot_framework>
 
-<original_task>
-{task.description}
-</original_task>
+    <role>
+    You are creating the FINAL ANSWER for a multi-agent task.
+    Your output is presented directly to the user.
+    </role>
 
-<agent_contributions>
-{work_summary}
-</agent_contributions>
+    <original_task>
+    {task.description}
+    </original_task>
 
-<validation_summary>
-{validation_summary}
-</validation_summary>
+    <agent_contributions>
+    {work_summary}
+    </agent_contributions>
 
-<validation_critiques>
-{critique_text}
-</validation_critiques>
+    <validation_summary>
+    {validation_summary}
+    </validation_summary>
 
-<synthesis_protocol>
-1. INTEGRATE all agent contributions into a coherent response
-2. RESOLVE any conflicts between agents
-3. ADDRESS validation concerns
-4. PRESERVE attribution for key insights
-5. FILL any gaps identified
-</synthesis_protocol>
+    <validation_critiques>
+    {critique_text}
+    </validation_critiques>
 
-<output_requirements>
-Create a well-structured final report that:
-- DIRECTLY answers the original task
-- Integrates insights from all agents with attribution
-- Addresses validation concerns
-- Provides clear, actionable conclusions
-- Uses professional formatting with clear sections
+    <atomic_synthesis_protocol>
+    PHASE 1: EXTRACT atomic contributions
+    - Convert each agent contribution into ATOMS (claims, steps, recommendations)
+    - Attach provenance: agent type + short supporting excerpt
 
-Prefix with: FINAL ANSWER
-</output_requirements>"""
+    PHASE 2: DETECT conflicts and validation issues
+    - If atoms conflict, list the conflict explicitly
+    - Prefer atoms consistent with validation feedback
+
+    PHASE 3: CONTRACT into final answer
+    - Use accepted atoms as KNOWN CONDITIONS
+    - Produce a coherent, non-redundant response that directly answers the task
+    - Include only the minimal necessary attribution (avoid clutter)
+
+    PHASE 4: GAP HANDLING
+    - If critical gaps remain, state them and propose concrete next steps
+    </atomic_synthesis_protocol>
+
+    <output_requirements>
+    - Provide a clear structure (summary → main answer → steps/considerations)
+    - Address validation concerns explicitly where relevant
+    - Be specific and actionable; avoid vague filler
+
+    Prefix with: FINAL ANSWER
+    </output_requirements>"""
         
         try:
             final_report = await synthesizer._llm_call(synthesis_prompt)
